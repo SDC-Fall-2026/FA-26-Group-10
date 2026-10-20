@@ -77,6 +77,7 @@ namespace HotPotato
         public void Animate(float dt, float clock, bool holder, bool protectedFromReturn = false)
         {
             Root.position = Position;
+            // andrew's first commit
             if (!Alive) return;
             silhouette.gameObject.SetActive(view.Occluded(Position + Vector3.up * 0.65f));
             float floor = ArenaGeometry.Floor(Position);
