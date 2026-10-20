@@ -100,5 +100,19 @@ namespace HotPotato
             Running = false;
             return eliminated;
         }
+
+        public bool Remove(int player)
+        {
+            if (Alive == null || player < 0 || player >= Alive.Length || !Alive[player]) return false;
+            Alive[player] = false;
+            Remaining--;
+            if (player == Holder || Remaining <= 1)
+            {
+                Holder = -1;
+                Loose = false;
+                Running = false;
+            }
+            return true;
+        }
     }
 }

@@ -22,6 +22,7 @@ namespace HotPotato
         public bool StartPressed { get; private set; }
         public bool RestartPressed { get; private set; }
         public bool MutePressed { get; private set; }
+        public bool FallPressed { get; private set; }
         int moveFinger = -1;
         int tagFinger = -1;
         int primarySource; // 1 mouse, 2 touch, 3 keyboard, 4 controller
@@ -72,7 +73,7 @@ namespace HotPotato
         public void Read(PotatoView view, Vector3 player, bool playing)
         {
             Move = Vector2.zero;
-            TagPressed = JumpPressed = ThrowReleased = PausePressed = StartPressed = RestartPressed = MutePressed = false;
+            TagPressed = JumpPressed = ThrowReleased = PausePressed = StartPressed = RestartPressed = MutePressed = FallPressed = false;
             var key = Keyboard.current;
             var pad = Gamepad.current;
             if (key != null)
@@ -81,6 +82,7 @@ namespace HotPotato
                 StartPressed = key.enterKey.wasPressedThisFrame;
                 RestartPressed = key.rKey.wasPressedThisFrame;
                 MutePressed = key.mKey.wasPressedThisFrame;
+                FallPressed = key.iKey.wasPressedThisFrame;
             }
             if (pad != null) { PausePressed |= pad.startButton.wasPressedThisFrame; StartPressed |= pad.buttonSouth.wasPressedThisFrame; }
             if (!playing) { Reset(); return; }
@@ -93,6 +95,8 @@ namespace HotPotato
                 if (key.eKey.wasPressedThisFrame) Begin(3);
                 if (key.eKey.wasReleasedThisFrame) Release(3);
             }
+            
+
             if (pad != null)
             {
                 if (pad.leftStick.ReadValue().sqrMagnitude > 0.02f) Move = pad.leftStick.ReadValue();

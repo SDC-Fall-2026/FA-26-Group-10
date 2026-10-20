@@ -14,6 +14,7 @@ namespace HotPotato
 
         public static float Floor(Vector3 point)
         {
+            if (Flat(point).magnitude > HotPotatoGame.ArenaRadius) return -100f;
             foreach (float x in PlatformX)
             {
                 if (Mathf.Abs(point.x - x) > 1.1f) continue;
@@ -21,6 +22,12 @@ namespace HotPotato
                 if (point.z >= -2 && point.z < 0) return Height * (point.z + 2) / 2;
             }
             return 0;
+        }
+
+        public static Vector3 Clamp(Vector3 point, float radius = HotPotatoGame.ArenaRadius)
+        {
+            Vector3 flat = Vector3.ClampMagnitude(Flat(point), radius);
+            return new Vector3(flat.x, point.y, flat.z);
         }
 
         public static Vector3 Flat(Vector3 vector) => new Vector3(vector.x, 0, vector.z);

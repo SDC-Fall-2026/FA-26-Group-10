@@ -140,6 +140,8 @@ namespace HotPotato
             if (controls.PausePressed) TogglePause();
             if (controls.StartPressed && (CurrentStage == Stage.Lobby || CurrentStage == Stage.Finished)) StartMatch();
             if (controls.RestartPressed && CurrentStage != Stage.Lobby) StartMatch();
+
+
             float dt = Paused ? 0 : Mathf.Min(Time.deltaTime, 0.05f);
             clock += dt;
             AnnouncementTime = Mathf.Max(0, AnnouncementTime - dt);
@@ -163,6 +165,7 @@ namespace HotPotato
                     queuedJump = false;
                     int steps = Mathf.Max(1, Mathf.CeilToInt(dt / (1f / 90f)));
                     for (int i = 0; i < steps && CurrentStage == Stage.Playing; i++) Simulate(dt / steps, controls.TagPressed && i == 0);
+
                 }
                 else if (CurrentStage == Stage.Intermission)
                 {
@@ -210,6 +213,13 @@ namespace HotPotato
             foreach (var actor in Actors)
             {
                 if (!actor.Alive) continue;
+
+                if (actor.Position.y < -10f)
+                {
+                    Fall(actor.Index);
+                    if (CurrentStage != Stage.Playing) return;
+                    continue;
+                }
                 actor.Cooldown = Mathf.Max(0, actor.Cooldown - dt);
                 actor.EscapeTime = Mathf.Max(0, actor.EscapeTime - dt);
                 actor.Recovery = Mathf.Max(0, actor.Recovery - dt);
@@ -255,7 +265,7 @@ namespace HotPotato
                 actor.Bounce = 0.6f;
             }
             actor.JumpBuffer = Mathf.Max(0, actor.JumpBuffer - dt);
-            Vector3 next = ArenaGeometry.Clamp(actor.Position + actor.Velocity * dt);
+            Vector3 next = ArenaGeometry.Clamp(actor.Position + actor.Velocity * dt, HotPotatoGame.ArenaRadius + 4f);
             float allowedRise = actor.Grounded ? 0.16f : 0.025f;
             if (ArenaGeometry.Floor(next) > actor.Position.y + allowedRise)
             {
@@ -500,7 +510,7 @@ namespace HotPotato
 
         void Separate(PotatoActor actor, Vector3 push)
         {
-            Vector3 point = ArenaGeometry.Clamp(actor.Position + push);
+            Vector3 point = ArenaGeometry.Clamp(actor.Position + push, HotPotatoGame.ArenaRadius + 4f);
             if (ArenaGeometry.Floor(point) <= actor.Position.y + 0.1f) actor.Position = point;
         }
 
@@ -523,6 +533,27 @@ namespace HotPotato
                 StageTime = 1.3f;
                 Say(actor.Name + " OUT", 1.3f);
             }
+        }
+
+        void Fall(int index)
+        {
+            var actor = Actors[index];
+            bool wasHolder = Rules.Holder == index;
+            if (!Rules.Remove(index)) return;
+
+            if (wasHolder || Rules.Finished)
+            {
+                Eliminate(index); // ends the round: intermission or win
+                return;
+            }
+
+            // Non-holder: just remove them and keep playing
+            actor.Alive = false;
+            actor.Root.gameObject.SetActive(false);
+            view.Explode(actor.Position, false);
+            Say(actor.Name + " OUT", 1.3f);
+            foreach (var other in Actors)
+                if (other.Target == index) other.Target = -1;
         }
 
         void Say(string message, float duration) { Announcement = message; AnnouncementTime = duration; }
