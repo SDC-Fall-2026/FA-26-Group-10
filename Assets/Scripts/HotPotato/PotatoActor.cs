@@ -50,6 +50,7 @@ namespace HotPotato
             Root.SetParent(parent, false);
             Body = new GameObject("Squash and turn").transform;
             Body.SetParent(Root, false);
+            if (view == null) return; // Training uses the same state without building renderers.
             var clay = view.Material(color);
             var ink = view.Material(PotatoView.Ink);
             var white = view.Material(new Color(1f, 0.98f, 0.89f));

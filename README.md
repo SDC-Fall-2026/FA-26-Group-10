@@ -45,6 +45,8 @@ Jumps include a small input buffer and grace period after stepping off a ledge. 
 
 Bots use the same jump physics, lunge and throw cooldowns, return protection, and collision rules. They steer toward ramps, jump away from danger, and commit to throw predictions. They are scripted bots, not trained agents.
 
+An experimental ML-Agents 4.1 duel training setup and optional model-driven bots are available. See [Training/README.md](Training/README.md) for setup, PPO runs, model evaluation, and difficulty model slots. The default gameplay bots remain scripted.
+
 ## Tuning and code
 
 Select the Hot Potato Tag scene object to tune movement speed, acceleration, dash speed, cooldown, and player count.
@@ -72,4 +74,4 @@ The helper copies the project under Temp/HotPotatoChecks, accesses Unity's local
 
 Checks cover ordinary contact, directional lunges, return protection including chain passes, ballistic hits, airborne evasion, missed-ball recovery, jumps, ramps, walls, drops, keyboard charge/release, projectile pausing, synthetic multitouch and canceled gestures, full matches, arena containment, and rematches.
 
-The parameters are an initial playtest baseline. Automated checks do not establish touch comfort, controller feel, or device frame rates; those still need physical testing. Multiplayer and reinforcement-learning training are future work.
+The parameters are an initial playtest baseline. Automated checks do not establish touch comfort, controller feel, or device frame rates; those still need physical testing. Network multiplayer, larger-match training, and calibrated learned difficulty levels are future work.

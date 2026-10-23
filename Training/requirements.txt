@@ -1,0 +1,6 @@
+# ML-Agents 4.1 installation guide's published trainer. CPU validation baseline.
+mlagents==1.1.0
+torch==2.2.2
+numpy==1.23.5
+onnx==1.15.0
+setuptools==75.8.0

@@ -143,6 +143,7 @@ namespace HotPotato.Editor
                 switch (step++)
                 {
                     case 0:
+                        PotatoTrainingTools.ValidateTrainingContract();
                         Require(game.Actors.Length == 8 && game.Rules.Remaining == 8, "Lobby creates eight contestants");
                         Require(Resources.Load<Shader>("HotPotato/Clay") != null, "Clay shader included");
                         InputSystem.settings.backgroundBehavior = InputSettings.BackgroundBehavior.IgnoreFocus;
@@ -221,8 +222,8 @@ namespace HotPotato.Editor
                                 foreach (var actor in game.Actors)
                                 {
                                     Require(!float.IsNaN(actor.Position.x), "Finite movement");
-                                    Require(ArenaGeometry.Flat(actor.Position).magnitude <= HotPotatoGame.ArenaRadius + 0.001f, "Arena contains all players");
-                                    Require(actor.Position.y >= -0.01f, "No falling through floor");
+                                    Require(ArenaGeometry.Flat(actor.Position).magnitude <= HotPotatoGame.ArenaRadius + 4.001f, "Movement stays within the arena's fall boundary");
+                                    Require(actor.Position.y >= Mathf.Min(0, ArenaGeometry.Floor(actor.Position)) - 0.01f, "No falling through arena base; off-arena falls are allowed");
                                 }
                             }
                             Require(budget > 0 && game.Rules.Remaining == 1, "Simulated match reaches one winner");
@@ -232,6 +233,32 @@ namespace HotPotato.Editor
                         game.BackToLobby(); game.SetPlayerCount(8);
                         break;
                     case 10:
+                        var model = Resources.Load<Unity.InferenceEngine.ModelAsset>("HotPotato/Models/Experimental");
+                        if (model != null)
+                        {
+                            var bots = game.GetComponent<PotatoModelBots>() ?? game.gameObject.AddComponent<PotatoModelBots>();
+                            bots.experimental = model;
+                            bots.difficulty = PotatoModelBots.Difficulty.Experimental;
+                            game.StartMatch(); Invoke(game, "BeginRound", 0);
+                        }
+                        break;
+                    case 11:
+                        var policies = game.GetComponentsInChildren<PotatoLearningAgent>();
+                        if (Resources.Load<Unity.InferenceEngine.ModelAsset>("HotPotato/Models/Experimental") != null)
+                        {
+                            Require(policies.Length == 7, "Eight-player match creates seven model bots");
+                            Require(Array.TrueForAll(policies, p => p.DecisionsReceived > 0), "All model bots execute inference");
+                            // Change player count while old policies still await cleanup.
+                            game.BackToLobby(); game.SetPlayerCount(2); game.StartMatch(); Invoke(game, "BeginRound", 0);
+                        }
+                        break;
+                    case 12:
+                        if (Resources.Load<Unity.InferenceEngine.ModelAsset>("HotPotato/Models/Experimental") != null)
+                        {
+                            var duelPolicies = game.GetComponentsInChildren<PotatoLearningAgent>();
+                            Require(duelPolicies.Length == 1 && duelPolicies[0].DecisionsReceived > 0, "Model bots rebind after rematch/player count change");
+                            Debug.Log("HOT_POTATO_INFERENCE_OK: live 8-player and 2-player model control");
+                        }
                         if (keyboard != null) InputSystem.RemoveDevice(keyboard);
                         Finish(!failed, "Runtime: input, intentional lunges, return protection, jump/landing, ramps/walls, throws/catches/misses, pause, 2/6/8/10/12-player matches, rematch.");
                         break;

@@ -20,6 +20,13 @@
 /[Uu]ser[Ss]ettings/
 *.log
 
+# Local reinforcement-learning tools, environments, and training output.
+/.venv-ml/
+/.tools/
+/Training/results/
+/Training/evaluation/
+__pycache__/
+
 # By default unity supports Blender asset imports, *.blend1 blender files do not need to be committed to version control.
 *.blend1
 *.blend1.meta

@@ -1,0 +1,8 @@
+﻿{
+    "run_id":  "curriculum-v2",
+    "behavior":  "HotPotatoV1",
+    "asset":  "CurriculumV2_1M",
+    "sha256":  "B473FB8318778448779E24CA7CE0AB3DD48DEB8C6F5724F3BBC64C43028848BD",
+    "imported_utc":  "2026-10-23T05:56:32.9981133Z",
+    "status":  "Experimental; no difficulty rating"
+}

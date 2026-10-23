@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 namespace HotPotato
 {
     [DisallowMultipleComponent]
-    public sealed class HotPotatoGame : MonoBehaviour
+    public sealed partial class HotPotatoGame : MonoBehaviour
     {
         public enum Stage { Lobby, Countdown, Playing, Intermission, Finished }
         [Header("Game feel")]
@@ -56,8 +56,11 @@ namespace HotPotato
             previousFrameRate = Application.targetFrameRate;
             Application.targetFrameRate = 120;
             controls = new PotatoInput();
-            view = new PotatoView(transform);
-            hud = new PotatoHud(this, transform);
+            if (!TrainingMode)
+            {
+                view = new PotatoView(transform);
+                hud = new PotatoHud(this, transform);
+            }
             SetPlayerCount(playerCount);
         }
 
@@ -74,6 +77,7 @@ namespace HotPotato
             cast = new GameObject("Contestants").transform;
             cast.SetParent(transform, false);
             Actors = new PotatoActor[playerCount];
+            ResetCommands(playerCount);
             Rules.Reset(playerCount);
             BombPosition = BombVelocity = Vector3.zero;
             BombResting = false;
@@ -114,6 +118,7 @@ namespace HotPotato
             if (CurrentStage == Stage.Lobby || CurrentStage == Stage.Finished) return;
             Paused = !Paused;
             controls.Reset();
+            ClearCommands();
             queuedJump = false;
             foreach (var actor in Actors) { actor.ChargeTime = 0; actor.BotChargeGoal = 0; }
         }
@@ -122,6 +127,7 @@ namespace HotPotato
         public void ToggleMute() => view.Muted = !view.Muted;
         void OnApplicationFocus(bool focus)
         {
+            if (TrainingMode) return;
             if (!focus && !Paused && CurrentStage != Stage.Lobby && CurrentStage != Stage.Finished) TogglePause();
         }
         void OnApplicationPause(bool pause) { if (pause) OnApplicationFocus(false); }
@@ -135,6 +141,7 @@ namespace HotPotato
 
         void Update()
         {
+            if (TrainingMode) return;
             controls.Read(view, Actors[0].Position, CurrentStage == Stage.Playing && !Paused && Actors[0].Alive);
             if (controls.MutePressed) ToggleMute();
             if (controls.PausePressed) TogglePause();
@@ -195,6 +202,7 @@ namespace HotPotato
             lastTick = Mathf.CeilToInt(Rules.Fuse);
             BombResting = false;
             controls.Reset();
+            ClearCommands();
             foreach (var actor in Actors)
             {
                 actor.DashTime = actor.Recovery = actor.ChargeTime = actor.BotChargeGoal = 0;
@@ -209,7 +217,7 @@ namespace HotPotato
             int eliminated = Rules.Tick(dt);
             if (eliminated >= 0) { Eliminate(eliminated); return; }
             int tick = Mathf.CeilToInt(Rules.Fuse);
-            if (tick != lastTick) { if (tick <= 4) view.TickSound(); lastTick = tick; }
+            if (tick != lastTick) { if (tick <= 4) view?.TickSound(); lastTick = tick; }
             foreach (var actor in Actors)
             {
                 if (!actor.Alive) continue;
@@ -224,7 +232,9 @@ namespace HotPotato
                 actor.EscapeTime = Mathf.Max(0, actor.EscapeTime - dt);
                 actor.Recovery = Mathf.Max(0, actor.Recovery - dt);
                 Vector3 desired;
-                if (actor.Index == 0)
+                if (agentControlled[actor.Index])
+                    desired = AgentMovement(actor, dt);
+                else if (actor.Index == 0 && !TrainingMode)
                 {
                     desired = new Vector3(controls.Move.x, 0, controls.Move.y);
                     if (tagPressed) Dash(actor, PlayerAim());
@@ -237,7 +247,7 @@ namespace HotPotato
                     float speed = moveSpeed * (Rules.Holder == actor.Index && !Rules.Loose ? 1.06f : 1);
                     if (actor.EscapeTime > 0) speed *= 1.35f;
                     if (actor.Recovery > 0) speed *= 0.65f;
-                    if (actor.BotChargeGoal > 0 || (actor.Index == 0 && AimingThrow)) speed *= 0.65f;
+                    if (actor.BotChargeGoal > 0 || agentChargeTime[actor.Index] > 0 || (actor.Index == 0 && AimingThrow)) speed *= 0.65f;
                     actor.Velocity = Vector3.MoveTowards(actor.Velocity, desired * speed, acceleration * (actor.Grounded ? 1 : 0.4f) * dt);
                 }
                 MoveActor(actor, dt);
@@ -392,7 +402,7 @@ namespace HotPotato
             actor.Cooldown = dashCooldown;
             actor.TagArmed = Rules.Holder == actor.Index && !Rules.Loose;
             actor.Bounce = 0.7f;
-            view.Burst(actor.Position + Vector3.up * 0.15f, 4, 1.3f, false);
+            view?.Burst(actor.Position + Vector3.up * 0.15f, 4, 1.3f, false);
         }
 
         public static Vector3 ThrowOrigin(PotatoActor actor) => actor.Position + Vector3.up * (1.72f + actor.ChargeTime * 0.35f);
@@ -407,7 +417,7 @@ namespace HotPotato
             actor.Cooldown = dashCooldown;
             actor.TagArmed = false;
             actor.ChargeTime = 0;
-            view.TickSound();
+            view?.TickSound();
             return true;
         }
 
@@ -480,8 +490,9 @@ namespace HotPotato
             receiver.DashTime = receiver.ChargeTime = receiver.BotChargeGoal = 0;
             receiver.TagArmed = false;
             receiver.Cooldown = Mathf.Max(receiver.Cooldown, 0.25f);
+            agentChargeTime[from] = agentChargeTime[to] = 0;
             receiver.Bounce = 1;
-            view.Pass(fromFlight ? BombPosition : sender.Position, receiver.Position, fromFlight);
+            view?.Pass(fromFlight ? BombPosition : sender.Position, receiver.Position, fromFlight);
             if (from == 0) Passes++;
         }
 
@@ -519,13 +530,13 @@ namespace HotPotato
             var actor = Actors[index];
             actor.Alive = false;
             actor.Root.gameObject.SetActive(false);
-            view.Explode(actor.Position, false);
+            view?.Explode(actor.Position, false);
             foreach (var survivor in Actors) { survivor.Velocity = Vector3.zero; survivor.TagArmed = false; survivor.ChargeTime = survivor.BotChargeGoal = 0; }
             if (Rules.Finished)
             {
                 CurrentStage = Stage.Finished;
                 foreach (var survivor in Actors)
-                    if (survivor.Alive) { Say(survivor.Index == 0 ? "YOU WIN" : survivor.Name + " WINS", 20); view.Explode(survivor.Position, true); }
+                    if (survivor.Alive) { Say(survivor.Index == 0 ? "YOU WIN" : survivor.Name + " WINS", 20); view?.Explode(survivor.Position, true); }
             }
             else
             {
@@ -550,7 +561,7 @@ namespace HotPotato
             // Non-holder: just remove them and keep playing
             actor.Alive = false;
             actor.Root.gameObject.SetActive(false);
-            view.Explode(actor.Position, false);
+            view?.Explode(actor.Position, false);
             Say(actor.Name + " OUT", 1.3f);
             foreach (var other in Actors)
                 if (other.Target == index) other.Target = -1;
